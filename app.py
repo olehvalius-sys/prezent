@@ -5,7 +5,6 @@ from typing import Optional
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from werkzeug.utils import secure_filename
 import qrcode
 from PIL import Image
 from io import BytesIO
@@ -16,7 +15,6 @@ import cloudinary.uploader
 
 # Константи
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
-MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
 # Зовнішня адреса для QR-кодів
 BASE_URL = os.getenv("BASE_URL", "https://prezent-zfsw.onrender.com")
@@ -41,6 +39,14 @@ cloudinary.config(
     secure=True
 )
 
+# Реєстрація кастомного фільтра Jinja
+@app.template_filter('format_money')
+def format_money(value: float) -> str:
+    try:
+        return f"{value:,.2f}".replace(',', ' ').replace('.', ',')
+    except (ValueError, TypeError):
+        return "0,00"
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
@@ -56,7 +62,7 @@ class Shield(db.Model):
     paid = db.Column(db.Boolean, default=False)
     date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
     paid_date = db.Column(db.DateTime, nullable=True, index=True)
-    photo_path = db.Column(db.String(500), nullable=True)  # Тепер це URL від Cloudinary
+    photo_path = db.Column(db.String(500), nullable=True)  # URL з Cloudinary
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -107,9 +113,8 @@ def admin():
                 try:
                     upload_result = cloudinary.uploader.upload(
                         file,
-                        folder="tarcze",                  # можна змінити або прибрати
+                        folder="tarcze",
                         resource_type="image",
-                        overwrite=True,
                         allowed_formats=["jpg", "jpeg", "png"]
                     )
                     photo_url = upload_result.get('secure_url')
@@ -131,7 +136,7 @@ def admin():
         db.session.add(new_shield)
         db.session.commit()
 
-        # Генерація QR
+        # QR-код
         qr_url = f"{BASE_URL}/public/{new_shield.id}"
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(qr_url)
@@ -146,7 +151,6 @@ def admin():
         flash('Tarcza dodana pomyślnie!', 'success')
         return redirect(url_for('admin'))
 
-    # Пагінація та сортування (без змін)
     page = request.args.get('page', 1, type=int)
     per_page = 20
     sort_by = request.args.get('sort', 'date_created')
@@ -185,8 +189,6 @@ def delete_shield(shield_id: int):
         return redirect(url_for('login'))
 
     shield = Shield.query.get_or_404(shield_id)
-    # Фото в Cloudinary не видаляємо автоматично (можна додати, якщо потрібно)
-    # cloudinary.api.delete_resources([shield.photo_path]) — якщо треба
     qr_file = f"shield_{shield.id}.png"
     qr_path = os.path.join('static/qrcodes', qr_file)
     if os.path.exists(qr_path):

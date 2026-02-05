@@ -16,6 +16,9 @@ UPLOAD_FOLDER_QRCODES = 'static/qrcodes'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
+# Зовнішня адреса Render (зміни, якщо домен інший)
+BASE_URL = "https://prezent-zfsw.onrender.com"
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change_me_to_something_very_secure')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shields.db'
@@ -117,12 +120,17 @@ def admin():
         db.session.add(new_shield)
         db.session.commit()
 
+        # Генерація QR з правильним зовнішнім посиланням
+        qr_url = f"{BASE_URL}/public/{new_shield.id}"
+
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(url_for('public', shield_id=new_shield.id, _external=True))
+        qr.add_data(qr_url)
         qr.make(fit=True)
         img = qr.make_image(fill_color="black", back_color="white")
+
         qr_filename = f"shield_{new_shield.id}.png"
-        img.save(os.path.join(UPLOAD_FOLDER_QRCODES, qr_filename))
+        qr_path = os.path.join(UPLOAD_FOLDER_QRCODES, qr_filename)
+        img.save(qr_path)
 
         flash('Tarcza dodana pomyślnie!', 'success')
         return redirect(url_for('admin'))

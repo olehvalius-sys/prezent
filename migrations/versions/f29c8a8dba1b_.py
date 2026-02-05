@@ -1,8 +1,8 @@
-"""Add paid_date column
+"""empty message
 
-Revision ID: 99af6eec0f9a
+Revision ID: f29c8a8dba1b
 Revises: 
-Create Date: 2026-02-05 13:05:07.363231
+Create Date: 2026-02-05 17:03:09.759569
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '99af6eec0f9a'
+revision = 'f29c8a8dba1b'
 down_revision = None
 branch_labels = None
 depends_on = None

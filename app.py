@@ -17,7 +17,7 @@ ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
 # Зовнішня адреса твого додатку на Render
-BASE_URL = "https://prezent-zfsw.onrender.com"
+BASE_URL = os.getenv("BASE_URL", "https://prezent-zfsw.onrender.com")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change_me_to_something_very_secure')

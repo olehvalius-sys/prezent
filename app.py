@@ -16,12 +16,19 @@ UPLOAD_FOLDER_QRCODES = 'static/qrcodes'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
-# Зовнішня адреса Render (зміни, якщо домен інший)
+# Зовнішня адреса твого додатку на Render (можна змінити)
 BASE_URL = "https://prezent-zfsw.onrender.com"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change_me_to_something_very_secure')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///shields.db'
+
+# Підключення до бази даних
+# На Render обов’язково вказати змінну середовища SQLALCHEMY_DATABASE_URI
+# Якщо змінної немає — fallback на локальну sqlite (тільки для розробки)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'SQLALCHEMY_DATABASE_URI',
+    'sqlite:///shields.db'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER_PHOTOS'] = UPLOAD_FOLDER_PHOTOS
 app.config['UPLOAD_FOLDER_QRCODES'] = UPLOAD_FOLDER_QRCODES
@@ -135,6 +142,7 @@ def admin():
         flash('Tarcza dodana pomyślnie!', 'success')
         return redirect(url_for('admin'))
 
+    # Пагінація та сортування
     page = request.args.get('page', 1, type=int)
     per_page = 20
     sort_by = request.args.get('sort', 'date_created')

@@ -25,10 +25,11 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change_me_to_something_very_
 # Підключення до бази даних
 # На Render обов’язково вказати змінну середовища SQLALCHEMY_DATABASE_URI
 # Якщо змінної немає — fallback на локальну sqlite (тільки для розробки)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'SQLALCHEMY_DATABASE_URI',
-    'sqlite:///shields.db'
-)
+# New – force psycopg 3 dialect
+DATABASE_URL = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///shields.db')
+if DATABASE_URL.startswith('postgres://'):
+    DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER_PHOTOS'] = UPLOAD_FOLDER_PHOTOS
 app.config['UPLOAD_FOLDER_QRCODES'] = UPLOAD_FOLDER_QRCODES

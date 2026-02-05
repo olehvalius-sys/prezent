@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Status płatności — Tarcza №{{ shield.id }}{% endblock %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-12 col-md-8 col-lg-6 mt-4">
+        <div class="card shadow text-center {% if shield.paid %}border-success{% else %}border-danger{% endif %}">
+            <div class="card-header {% if shield.paid %}bg-success text-white{% else %}bg-danger text-white{% endif %} py-4 text-center">
+                <h2 class="mb-0">
+                    {% if shield.paid %}
+                        <i class="bi bi-check-circle-fill me-2"></i> Wszystko opłacone!
+                    {% else %}
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Wymagana płatność!
+                    {% endif %}
+                </h2>
+            </div>
+
+            <div class="card-body p-4">
+                <div class="row align-items-center mb-4">
+                    <div class="col-8 text-start">
+                        <h4 class="mb-1">Tarcza №{{ shield.id }}</h4>
+                        <p class="mb-1 fs-5"><strong>Ulica:</strong> {{ shield.street }}</p>
+                        <p class="mb-0 fs-5"><strong>Klient:</strong> {{ shield.client }}</p>
+                    </div>
+                    <div class="col-4 text-end">
+                        {% if not shield.paid %}
+                            <div style="background: #fff3cd; border-radius: 12px; padding: 12px; display: inline-block;">
+                                <img src="{{ url_for('static', filename='images/mad.png') }}" 
+                                     alt="Agresywna małpa" 
+                                     style="width: 140px; height: auto;">
+                            </div>
+                        {% else %}
+                            <div style="background: #d4edda; border-radius: 12px; padding: 12px; display: inline-block;">
+                                <img src="{{ url_for('static', filename='images/happy.jpg') }}" 
+                                     alt="Spokojna małpa" 
+                                     style="width: 140px; height: auto;">
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if shield.photo_path %}
+                <div class="my-4 text-center">
+                    <img src="{{ url_for('serve_photo', filename=shield.photo_path) }}"
+                         class="img-fluid rounded shadow-sm" alt="Zdjęcie tarczy"
+                         style="max-height: 320px; object-fit: contain;">
+                </div>
+                {% endif %}
+
+                {% if shield.paid %}
+                <div class="alert alert-success mt-4">
+                    <h5 class="mb-1">Dziękujemy za płatność!</h5>
+                    <p class="mb-2">Opłacono: <strong>{{ shield.paid_date.strftime('%d.%m.%Y %H:%M') }}</strong></p>
+                    <p class="mb-0">Prace wykonane / tarcza przyjęta.</p>
+                </div>
+                {% else %}
+                <div class="alert alert-danger mt-4">
+                    <h5 class="mb-2">Do zapłaty: <strong>{{ shield.amount | format_money }} zł</strong></h5>
+                    <p class="mb-1">Przelej mistrzowi, aby zakończyć prace.</p>
+                    <small class="text-muted">Data utworzenia: {{ shield.date_created.strftime('%d.%m.%Y %H:%M') }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -10,45 +10,43 @@ import qrcode
 from PIL import Image
 from io import BytesIO
 
+# Cloudinary
+import cloudinary
+import cloudinary.uploader
+
 # Константи
-UPLOAD_FOLDER_PHOTOS = 'static/photos'
-UPLOAD_FOLDER_QRCODES = 'static/qrcodes'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
-# Зовнішня адреса твого додатку на Render
+# Зовнішня адреса для QR-кодів
 BASE_URL = os.getenv("BASE_URL", "https://prezent-zfsw.onrender.com")
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change_me_to_something_very_secure')
 
+# Database config
 DATABASE_URL = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///shields.db')
-
-# Optional: Normalize Render's postgres:// to postgresql:// (psycopg2 uses postgresql+psycopg2 implicitly)
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Upload folders
-app.config['UPLOAD_FOLDER_PHOTOS'] = UPLOAD_FOLDER_PHOTOS
-app.config['UPLOAD_FOLDER_QRCODES'] = UPLOAD_FOLDER_QRCODES
-app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
-app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
-app.config['ADMIN_PASSWORD'] = os.getenv('ADMIN_PASSWORD', 'admin')  # Зміни в production!
+app.config['ADMIN_PASSWORD'] = os.getenv('ADMIN_PASSWORD', 'admin')
 
-# Logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Cloudinary конфігурація
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-os.makedirs(UPLOAD_FOLDER_PHOTOS, exist_ok=True)
-os.makedirs(UPLOAD_FOLDER_QRCODES, exist_ok=True)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# Модель
 class Shield(db.Model):
     __tablename__ = 'shields'
     id = db.Column(db.Integer, primary_key=True)
@@ -58,25 +56,11 @@ class Shield(db.Model):
     paid = db.Column(db.Boolean, default=False)
     date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow, index=True)
     paid_date = db.Column(db.DateTime, nullable=True, index=True)
-    photo_path = db.Column(db.String(200), nullable=True)
+    photo_path = db.Column(db.String(500), nullable=True)  # Тепер це URL від Cloudinary
 
 def allowed_file(filename: str) -> bool:
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def delete_file(path: str) -> None:
-    if os.path.exists(path):
-        os.remove(path)
-        logger.info(f"Plik usunięty: {path}")
-
-# Jinja filter
-@app.template_filter('format_money')
-def format_money(value: float) -> str:
-    try:
-        return f"{value:,.2f}".replace(',', ' ').replace('.', ',')
-    except (ValueError, TypeError):
-        return "0,00"
-
-# Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -116,19 +100,34 @@ def admin():
             flash('Kwota musi być liczbą dodatnią!', 'danger')
             return redirect(url_for('admin'))
 
-        photo_filename = None
+        photo_url = None
         if 'photo' in request.files:
             file = request.files['photo']
             if file and allowed_file(file.filename):
-                ext = file.filename.rsplit('.', 1)[1].lower()
-                timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
-                photo_filename = secure_filename(f"shield_{timestamp}.{ext}")
-                file.save(os.path.join(UPLOAD_FOLDER_PHOTOS, photo_filename))
+                try:
+                    upload_result = cloudinary.uploader.upload(
+                        file,
+                        folder="tarcze",                  # можна змінити або прибрати
+                        resource_type="image",
+                        overwrite=True,
+                        allowed_formats=["jpg", "jpeg", "png"]
+                    )
+                    photo_url = upload_result.get('secure_url')
+                    logger.info(f"Завантажено в Cloudinary: {photo_url}")
+                except Exception as e:
+                    logger.error(f"Помилка Cloudinary: {str(e)}")
+                    flash(f'Помилка завантаження фото: {str(e)}', 'danger')
+                    return redirect(url_for('admin'))
             elif file.filename:
-                flash('Dozwolone tylko JPG/PNG.', 'danger')
+                flash('Dozwolone тільки JPG/PNG.', 'danger')
                 return redirect(url_for('admin'))
 
-        new_shield = Shield(street=street, client=client, amount=amount, photo_path=photo_filename)
+        new_shield = Shield(
+            street=street,
+            client=client,
+            amount=amount,
+            photo_path=photo_url
+        )
         db.session.add(new_shield)
         db.session.commit()
 
@@ -140,13 +139,14 @@ def admin():
         img = qr.make_image(fill_color="black", back_color="white")
 
         qr_filename = f"shield_{new_shield.id}.png"
-        qr_path = os.path.join(UPLOAD_FOLDER_QRCODES, qr_filename)
+        qr_path = os.path.join('static/qrcodes', qr_filename)
+        os.makedirs('static/qrcodes', exist_ok=True)
         img.save(qr_path)
 
         flash('Tarcza dodana pomyślnie!', 'success')
         return redirect(url_for('admin'))
 
-    # Пагінація та сортування
+    # Пагінація та сортування (без змін)
     page = request.args.get('page', 1, type=int)
     per_page = 20
     sort_by = request.args.get('sort', 'date_created')
@@ -185,9 +185,12 @@ def delete_shield(shield_id: int):
         return redirect(url_for('login'))
 
     shield = Shield.query.get_or_404(shield_id)
-    if shield.photo_path:
-        delete_file(os.path.join(UPLOAD_FOLDER_PHOTOS, shield.photo_path))
-    delete_file(os.path.join(UPLOAD_FOLDER_QRCODES, f"shield_{shield.id}.png"))
+    # Фото в Cloudinary не видаляємо автоматично (можна додати, якщо потрібно)
+    # cloudinary.api.delete_resources([shield.photo_path]) — якщо треба
+    qr_file = f"shield_{shield.id}.png"
+    qr_path = os.path.join('static/qrcodes', qr_file)
+    if os.path.exists(qr_path):
+        os.remove(qr_path)
     db.session.delete(shield)
     db.session.commit()
     flash('Tarcza usunięta!', 'success')
@@ -202,19 +205,16 @@ def public(shield_id: int):
 def download_qr(shield_id: int):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return send_from_directory(UPLOAD_FOLDER_QRCODES, f"shield_{shield_id}.png", as_attachment=True)
-
-@app.route('/static/photos/<filename>')
-def serve_photo(filename: str):
-    return send_from_directory(UPLOAD_FOLDER_PHOTOS, filename)
+    return send_from_directory('static/qrcodes', f"shield_{shield_id}.png", as_attachment=True)
 
 @app.route('/static/qrcodes/<filename>')
 def serve_qr(filename: str):
     if not session.get('logged_in'):
         return redirect(url_for('login'))
-    return send_from_directory(UPLOAD_FOLDER_QRCODES, filename)
+    return send_from_directory('static/qrcodes', filename)
 
 if __name__ == '__main__':
+    os.makedirs('static/qrcodes', exist_ok=True)
     with app.app_context():
         db.create_all()
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

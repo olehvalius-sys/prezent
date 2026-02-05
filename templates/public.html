@@ -30,24 +30,35 @@
                             <div style="background: #fff3cd; border-radius: 12px; padding: 8px; display: inline-block;">
                                 <img src="{{ url_for('static', filename='images/mad.png') }}" 
                                      alt="Agresywna małpa" 
-                                     style="width: 100px; max-width: 100%; height: auto; margin-right: auto;">
+                                     style="width: 100px; max-width: 100%; height: auto;">
                             </div>
                         {% else %}
                             <div style="background: #d4edda; border-radius: 12px; padding: 8px; display: inline-block;">
                                 <img src="{{ url_for('static', filename='images/happy.png') }}" 
                                      alt="Spokojna małpa" 
-                                     style="width: 100px; max-width: 100%; height: auto; margin-right: auto;">
+                                     style="width: 100px; max-width: 100%; height: auto;">
                             </div>
                         {% endif %}
                     </div>
                 </div>
 
-                <!-- Фото щитка -->
+                <!-- Фото щитка з Cloudinary (повний URL) -->
                 {% if shield.photo_path %}
                 <div class="my-4 text-center">
-                    <img src="{{ url_for('serve_photo', filename=shield.photo_path) }}"
-                         class="img-fluid rounded shadow-sm" alt="Zdjęcie tarczy"
-                         style="max-width: 100%; height: auto; max-height: 250px; object-fit: contain;">
+                    <img src="{{ shield.photo_path }}"
+                         class="img-fluid rounded shadow-sm" 
+                         alt="Zdjęcie tarczy №{{ shield.id }}"
+                         style="max-width: 100%; height: auto; max-height: 400px; object-fit: contain; border: 1px solid #dee2e6;">
+                    <p class="mt-2 text-muted small">
+                        <a href="{{ shield.photo_path }}" target="_blank" class="text-primary">
+                            <i class="bi bi-zoom-in"></i> Otwórz zdjęcie w pełnym rozmiarze
+                        </a>
+                    </p>
+                </div>
+                {% else %}
+                <div class="alert alert-info text-center my-4">
+                    <i class="bi bi-image fs-4 me-2"></i>
+                    Zdjęcie tarczy nie zostało jeszcze dodane
                 </div>
                 {% endif %}
 

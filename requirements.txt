@@ -5,4 +5,5 @@ werkzeug==3.0.4
 qrcode[pil]==7.4.2
 pillow>=12.1.0
 gunicorn==22.0.0
-psycopg2-binary==2.9.11  # Latest as of early 2026, supports Python 3.14 + Windows wheels
+psycopg2-binary==2.9.11 
+cloudinary==1.40.0   

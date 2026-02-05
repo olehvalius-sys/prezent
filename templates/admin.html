@@ -81,7 +81,7 @@
                         </td>
                         <td class="text-center">
                             {% if shield.photo_path %}
-                                <a href="{{ url_for('serve_photo', filename=shield.photo_path) }}" target="_blank">
+                                <a href="{{ shield.photo_path }}" target="_blank">
                                     <i class="bi bi-image fs-4 text-primary"></i>
                                 </a>
                             {% else %}

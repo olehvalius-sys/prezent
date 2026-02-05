@@ -16,44 +16,42 @@ UPLOAD_FOLDER_QRCODES = 'static/qrcodes'
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16 MB
 
-# Зовнішня адреса твого додатку на Render (можна змінити)
+# Зовнішня адреса твого додатку на Render
 BASE_URL = "https://prezent-zfsw.onrender.com"
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'change_me_to_something_very_secure')
 
-# Підключення до бази даних
-# На Render обов’язково вказати змінну середовища SQLALCHEMY_DATABASE_URI
-# Якщо змінної немає — fallback на локальну sqlite (тільки для розробки)
-# New – force psycopg 3 dialect
+# Database configuration with psycopg 3 dialect
 DATABASE_URL = os.getenv('SQLALCHEMY_DATABASE_URI', 'sqlite:///shields.db')
+
+# Force correct dialect for psycopg 3 (important on Render with Python 3.13)
 if DATABASE_URL.startswith('postgres://'):
     DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql+psycopg://', 1)
+elif DATABASE_URL.startswith('postgresql://') and '+psycopg' not in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace('postgresql://', 'postgresql+psycopg://', 1)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Upload folders
 app.config['UPLOAD_FOLDER_PHOTOS'] = UPLOAD_FOLDER_PHOTOS
 app.config['UPLOAD_FOLDER_QRCODES'] = UPLOAD_FOLDER_QRCODES
 app.config['ALLOWED_EXTENSIONS'] = ALLOWED_EXTENSIONS
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
-app.config['ADMIN_PASSWORD'] = os.getenv('ADMIN_PASSWORD', 'admin')  # Зміни!
+app.config['ADMIN_PASSWORD'] = os.getenv('ADMIN_PASSWORD', 'admin')  # Зміни в production!
+
+# Logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# Логування
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-@app.template_filter('format_money')
-def format_money(value: float) -> str:
-    try:
-        return f"{value:,.2f}".replace(',', ' ').replace('.', ',')
-    except (ValueError, TypeError):
-        return "0,00"
-
 os.makedirs(UPLOAD_FOLDER_PHOTOS, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER_QRCODES, exist_ok=True)
 
+# Модель
 class Shield(db.Model):
     __tablename__ = 'shields'
     id = db.Column(db.Integer, primary_key=True)
@@ -73,6 +71,15 @@ def delete_file(path: str) -> None:
         os.remove(path)
         logger.info(f"Plik usunięty: {path}")
 
+# Jinja filter
+@app.template_filter('format_money')
+def format_money(value: float) -> str:
+    try:
+        return f"{value:,.2f}".replace(',', ' ').replace('.', ',')
+    except (ValueError, TypeError):
+        return "0,00"
+
+# Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -128,9 +135,8 @@ def admin():
         db.session.add(new_shield)
         db.session.commit()
 
-        # Генерація QR з правильним зовнішнім посиланням
+        # Генерація QR
         qr_url = f"{BASE_URL}/public/{new_shield.id}"
-
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
         qr.add_data(qr_url)
         qr.make(fit=True)
@@ -214,4 +220,4 @@ def serve_qr(filename: str):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

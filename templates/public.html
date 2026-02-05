@@ -17,21 +17,23 @@
             </div>
 
             <div class="card-body p-4 p-md-5">
-                <div class="row align-items-center mb-4">
-                    <div class="col-8 col-md-7 text-start">
+                <!-- Заголовок + текст + мавпа -->
+                <div class="d-flex flex-column flex-md-row align-items-center justify-content-between mb-4 gap-3">
+                    <div class="text-start w-100 w-md-50">
                         <h4 class="mb-1">Tarcza №{{ shield.id }}</h4>
                         <p class="mb-1 fs-5"><strong>Ulica:</strong> {{ shield.street }}</p>
                         <p class="mb-0 fs-5"><strong>Klient:</strong> {{ shield.client }}</p>
                     </div>
-                    <div class="col-4 col-md-5 text-end">
+
+                    <div class="text-center text-md-end">
                         {% if not shield.paid %}
-                            <div style="background: #fff3cd; border-radius: 12px; padding: 8px 8px 12px; display: inline-block;">
+                            <div style="background: #fff3cd; border-radius: 12px; padding: 8px; display: inline-block;">
                                 <img src="{{ url_for('static', filename='images/mad.png') }}" 
                                      alt="Agresywna małpa" 
                                      style="width: 100px; max-width: 100%; height: auto; margin-right: auto;">
                             </div>
                         {% else %}
-                            <div style="background: #d4edda; border-radius: 12px; padding: 8px 8px 12px; display: inline-block;">
+                            <div style="background: #d4edda; border-radius: 12px; padding: 8px; display: inline-block;">
                                 <img src="{{ url_for('static', filename='images/happy.png') }}" 
                                      alt="Spokojna małpa" 
                                      style="width: 100px; max-width: 100%; height: auto; margin-right: auto;">
@@ -40,14 +42,16 @@
                     </div>
                 </div>
 
+                <!-- Фото щитка -->
                 {% if shield.photo_path %}
                 <div class="my-4 text-center">
                     <img src="{{ url_for('serve_photo', filename=shield.photo_path) }}"
                          class="img-fluid rounded shadow-sm" alt="Zdjęcie tarczy"
-                         style="max-width: 100%; height: auto; max-height: 280px; object-fit: contain;">
+                         style="max-width: 100%; height: auto; max-height: 250px; object-fit: contain;">
                 </div>
                 {% endif %}
 
+                <!-- Повідомлення -->
                 {% if shield.paid %}
                 <div class="alert alert-success mt-4">
                     <h5 class="mb-1">Dziękujemy za płatność!</h5>
